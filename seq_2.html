@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Números Figurados e Fibonacci - Interseções com Posições</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      padding: 20px;
+      background: #f8f9fa;
+    }
+    .sequence-list {
+      max-height: 300px;
+      overflow-y: auto;
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+    .common-number {
+      font-weight: 600;
+      color: #0d6efd;
+    }
+    .badge-seq {
+      margin-left: 8px;
+      font-size: 1rem;
+      position: relative;
+      display: inline-block;
+      padding: 0.25em 0.5em;
+      background-color: #0d6efd;
+      color: white;
+      border-radius: 0.375rem;
+      font-weight: 600;
+      vertical-align: middle;
+    }
+    .badge-seq sup {
+      font-size: 0.6em;
+      position: absolute;
+      top: -0.5em;
+      right: 0.2em;
+      font-weight: 600;
+      color: #ffc107;
+    }
+    pre {
+      background: #e9ecef;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1 class="mb-4 text-center">Números Figurados e Fibonacci - Interseções com Posições</h1>
+
+    <form id="form" class="row g-3 mb-4 justify-content-center">
+      <div class="col-auto">
+        <label for="limitInput" class="col-form-label">Limite máximo (n):</label>
+      </div>
+      <div class="col-auto">
+        <input type="number" class="form-control" id="limitInput" min="1" max="2000000" value="100" required />
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Gerar Sequências</button>
+      </div>
+    </form>
+
+    <div class="row">
+      <!-- Sequências geradas -->
+      <div class="col-md-6 mb-4">
+        <h4>Sequências geradas até n</h4>
+        <div class="sequence-list" id="sequencesContainer"></div>
+      </div>
+
+      <!-- Números comuns com posições -->
+      <div class="col-md-6 mb-4">
+        <h4>Números comuns entre as sequências com posições</h4>
+        <div class="sequence-list" id="commonNumbersContainer"></div>
+      </div>
+    </div>
+
+    <hr />
+
+    <h5>Fórmulas das sequências</h5>
+    <pre>
+Triangular (Tₙ): Tₙ = n(n + 1) / 2
+Quadrangular (Qₙ): Qₙ = n²
+Pentagonal (Pₙ): Pₙ = n(3n - 1) / 2
+Hexagonal (Hₙ): Hₙ = n(2n - 1)
+Fibonacci (Fₙ): F₀=0, F₁=1, Fₙ=Fₙ₋₁+Fₙ₋₂ para n≥2
+    </pre>
+  </div>
+
+  <script>
+    // Funções para calcular números figurados
+    function triangular(n) {
+      return n * (n + 1) / 2;
+    }
+    function quadrangular(n) {
+      return n * n;
+    }
+    function pentagonal(n) {
+      return n * (3 * n - 1) / 2;
+    }
+    function hexagonal(n) {
+      return n * (2 * n - 1);
+    }
+    function fibonacci(limit) {
+      const fib = [0, 1];
+      while (true) {
+        const next = fib[fib.length - 1] + fib[fib.length - 2];
+        if (next > limit) break;
+        fib.push(next);
+      }
+      return fib;
+    }
+
+    // Gera sequência até limite máximo e retorna array de objetos {num, pos}
+    function generateSequenceWithPositions(func, limit) {
+      const seq = [];
+      let n = 1;
+      while (true) {
+        const val = func(n);
+        if (val > limit) break;
+        seq.push({ num: val, pos: n });
+        n++;
+      }
+      return seq;
+    }
+
+    // Gera Fibonacci com posições (index no array)
+    function fibonacciWithPositions(limit) {
+      const fib = [0, 1];
+      while (true) {
+        const next = fib[fib.length - 1] + fib[fib.length - 2];
+        if (next > limit) break;
+        fib.push(next);
+      }
+      // Remove 0 para consistência e retorna com posições iniciando em 1
+      return fib.slice(1).map((num, idx) => ({ num, pos: idx + 1 }));
+    }
+
+    // Map para nomes completos e siglas
+    const sequenceNames = {
+      T: "Triangular",
+      Q: "Quadrangular",
+      P: "Pentagonal",
+      H: "Hexagonal",
+      F: "Fibonacci"
+    };
+
+    // Identifica números comuns e suas posições {num, types: [{type, pos}, ...]}
+    function findCommonNumbersWithPositions(sequencesMap) {
+      const numberMap = new Map();
+
+      for (const [type, arr] of Object.entries(sequencesMap)) {
+        for (const { num, pos } of arr) {
+          if (!numberMap.has(num)) {
+            numberMap.set(num, []);
+          }
+          numberMap.get(num).push({ type, pos });
+        }
+      }
+
+      // Filtra só os números que aparecem em mais de uma sequência
+      const commons = [];
+      for (const [num, typesArr] of numberMap.entries()) {
+        if (typesArr.length > 1) {
+          commons.push({ num, types: typesArr });
+        }
+      }
+
+      commons.sort((a, b) => a.num - b.num);
+      return commons;
+    }
+
+    // Formata array para string com vírgulas e limite de elementos
+    function formatArray(arr, max = 30) {
+      if (arr.length <= max) return arr.map(o => o.num).join(', ');
+      return arr.slice(0, max).map(o => o.num).join(', ') + ', ...';
+    }
+
+    // Atualiza UI
+    function updateUI(limit) {
+      const sequencesMap = {
+        T: generateSequenceWithPositions(triangular, limit),
+        Q: generateSequenceWithPositions(quadrangular, limit),
+        P: generateSequenceWithPositions(pentagonal, limit),
+        H: generateSequenceWithPositions(hexagonal, limit),
+        F: fibonacciWithPositions(limit)
+      };
+
+      // Mostra sequências
+      const container = document.getElementById('sequencesContainer');
+      container.innerHTML = '';
+      for (const [type, seq] of Object.entries(sequencesMap)) {
+        const div = document.createElement('div');
+        div.classList.add('mb-3');
+        div.innerHTML = `<h5>${sequenceNames[type]} (${seq.length} termos):</h5><p>${formatArray(seq)}</p>`;
+        container.appendChild(div);
+      }
+
+      // Mostra números comuns com posições
+      const commonNumbers = findCommonNumbersWithPositions(sequencesMap);
+      const commonContainer = document.getElementById('commonNumbersContainer');
+      commonContainer.innerHTML = '';
+
+      if (commonNumbers.length === 0) {
+        commonContainer.textContent = 'Nenhum número comum encontrado entre as sequências até este limite.';
+        return;
+      }
+
+      for (const item of commonNumbers) {
+        const p = document.createElement('p');
+        p.innerHTML = `<span class="common-number">${item.num}</span> ` +
+          item.types.map(({type, pos}) => 
+            `<span class="badge-seq">${sequenceNames[type]} <sup>${type}_${pos}</sup></span>`
+          ).join(' ');
+        commonContainer.appendChild(p);
+      }
+    }
+
+    // Evento do formulário
+    document.getElementById('form').addEventListener('submit', event => {
+      event.preventDefault();
+      const limit = parseInt(document.getElementById('limitInput').value);
+      if (isNaN(limit) || limit < 1) {
+        alert('Por favor, insira um número válido maior que zero.');
+        return;
+      }
+      updateUI(limit);
+    });
+
+    // Inicializa
+    updateUI(parseInt(document.getElementById('limitInput').value));
+  </script>
+
+</body>
+</html>
